@@ -12,3 +12,6 @@ config-view-namespace:
 
 port-forward:
 	kubectl port-forward deploy/app-nginx 8080:80
+
+clean:
+	kubectl delete -f k8s/ --ignore-not-found=true

@@ -38,13 +38,31 @@ make port-forward
 ```
 Acesse no navegador: [http://localhost:8080](http://localhost:8080)
 
-### 4. Testar a persistência
+### 4. Testar o Ingress (com Rewrite)
+O projeto inclui uma configuração de Ingress que mapeia o domínio `vessel-k8s-lab.local` e utiliza `rewrite-target`.
+
+#### Configuração do DNS local
+Adicione o IP do seu cluster ao arquivo `/etc/hosts`:
+```text
+<IP_DO_CLUSTER> vessel-k8s-lab.local
+```
+*(No Minikube, obtenha o IP com `minikube ip`)*
+
+#### Teste com HTTPie
+Para testar o acesso através do Ingress Controller (considerando a porta mapeada pelo serviço `ingress-nginx-controller`):
+
+```bash
+# Acessando via domínio e porta do Ingress (ex: 30560)
+http vessel-k8s-lab.local:30560/01-persistence-unit
+```
+
+### 5. Testar a persistência
 Se você reiniciar o Pod (deletando-o), o `initContainer` rodará novamente e adicionará uma nova linha ao arquivo `index.html`. Como o volume é persistente, o histórico de reinicializações será preservado.
 
 ```bash
 kubectl delete pod -l app=web-server
 ```
-Aguarde o novo Pod subir e atualize a página no navegador.
+Aguarde o novo Pod subir e execute novamente o comando do Ingress para ver a nova data adicionada.
 
 ## Limpeza
 Para remover todos os recursos criados:

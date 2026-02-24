@@ -14,20 +14,17 @@ O objetivo é criar um servidor Nginx que serve uma página HTML persistente. Um
 ## Como Executar
 
 ### 1. Preparar o ambiente
-Aplique os manifestos e configure o contexto do seu `kubectl` para o namespace correto:
+Para subir toda a infraestrutura (Namespace, Contexto e Manifestos) e aguardar os recursos ficarem prontos:
 
 ```bash
-make apply-namespace
-make config-set-context
-make apply
+make up
 ```
 
 ### 2. Verificar os recursos
-Acompanhe a criação do Pod e do PVC:
+Para ver a situação atual do cluster no namespace do projeto:
 
 ```bash
-kubectl get pods
-kubectl get pvc
+make status
 ```
 
 ### 3. Acessar a aplicação
@@ -57,18 +54,31 @@ http vessel-k8s-lab.local:30560/01-persistence-unit
 ```
 
 ### 5. Testar a persistência
-Se você reiniciar o Pod (deletando-o), o `initContainer` rodará novamente e adicionará uma nova linha ao arquivo `index.html`. Como o volume é persistente, o histórico de reinicializações será preservado.
+Para validar que os dados persistem entre reinicializações, você pode forçar um reinício do Deployment. O `initContainer` rodará novamente e adicionará uma nova linha ao arquivo `index.html`.
 
 ```bash
-kubectl delete pod -l app=web-server
+make restart
+make wait
 ```
-Aguarde o novo Pod subir e execute novamente o comando do Ingress para ver a nova data adicionada.
+Aguarde o novo Pod subir e verifique os logs ou acesse via Ingress/Port-forward para ver a nova data adicionada.
+
+## Utilitários do Makefile
+O `Makefile` funciona como uma documentação viva de comandos úteis. Execute para ver todas as opções categorizadas:
+
+```bash
+make help
+```
+
+Alguns comandos úteis para estudo:
+- `make logs`: Acompanha a saída do container.
+- `make shell`: Acessa o interior do container Nginx.
+- `make ctx`: Garante que seu terminal está operando no namespace correto.
 
 ## Limpeza
 Para remover todos os recursos criados:
 
 ```bash
-make clean
+make down
 ```
 
 ---

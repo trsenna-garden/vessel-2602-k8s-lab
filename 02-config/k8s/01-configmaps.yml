@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config-template
+data:
+  default.conf.template: |
+    server {
+        listen 80;
+        server_name localhost;
+
+        location / {
+            auth_basic "Area Restrita";
+            auth_basic_user_file /etc/nginx/.htpasswd;
+
+            proxy_pass ${UPSTREAM_URL};
+
+            proxy_set_header Authorization "Bearer ${API_TOKEN}";
+            proxy_set_header Host $proxy_host;
+        }
+    }
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-env-vars
+data:
+  UPSTREAM_URL: "https://httpbin.org/get"

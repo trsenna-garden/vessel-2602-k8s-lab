@@ -48,10 +48,10 @@ ctx:
 	@echo "Configurando namespace: $(NAMESPACE)"
 	kubectl config set-context --current --namespace=$(NAMESPACE)
 
-## status: Exibe o estado de todos os recursos (Pods, Services, PVCs, Ingress)
+## status: Exibe o estado de todos os recursos (Pods, Services, Ingress)
 status:
 	@echo "--- Recursos no Namespace: $(NAMESPACE) ---"
-	$(KUBECTL) get all,pvc,ingress
+	$(KUBECTL) get all,ingress,cm,secrets
 
 ## logs: Acompanha os logs do Deployment
 logs:

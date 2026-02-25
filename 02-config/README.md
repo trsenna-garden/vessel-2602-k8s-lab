@@ -1,0 +1,3 @@
+# Lab 02 - ConfigMap e Secrets no Kubernetes
+
+Suspendisse ultrices quam quis hendrerit pharetra. Phasellus auctor nec ligula id tempor. Donec neque massa, tincidunt nec ullamcorper ac, sagittis vel justo. Praesent elementum nisi vitae ex ornare, non consectetur lacus imperdiet. Proin ultrices dui ut diam efficitur tempor. Vivamus placerat purus eu dolor suscipit, sit amet ornare arcu tincidunt. Praesent in faucibus nibh, ac pulvinar est. Vestibulum tempor nec tellus eu tempus. Donec posuere vehicula leo, nec euismod ligula. Praesent lectus justo, laoreet ut convallis quis, tincidunt eu nisi.

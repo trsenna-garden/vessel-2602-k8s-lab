@@ -39,18 +39,17 @@ Acesse no navegador: [http://localhost:8080](http://localhost:8080)
 O projeto inclui uma configuração de Ingress que mapeia o domínio `vessel-k8s-lab.local` e utiliza `rewrite-target`.
 
 #### Configuração do DNS local
-Adicione o IP do seu cluster ao arquivo `/etc/hosts`:
+Adicione o IP do seu cluster (192.168.49.2 no Minikube local) ao arquivo `/etc/hosts`:
 ```text
-<IP_DO_CLUSTER> vessel-k8s-lab.local
+192.168.49.2 vessel-k8s-lab.local
 ```
-*(No Minikube, obtenha o IP com `minikube ip`)*
 
 #### Teste com HTTPie
-Para testar o acesso através do Ingress Controller (considerando a porta mapeada pelo serviço `ingress-nginx-controller`):
+Para testar o acesso através do Ingress Controller:
 
 ```bash
-# Acessando via domínio e porta do Ingress (ex: 30560)
-http vessel-k8s-lab.local:30560/01-persistence-unit
+# Acessando via domínio (porta 80 padrão do Ingress)
+http vessel-k8s-lab.local/01-persistence-unit
 ```
 
 ### 5. Testar a persistência

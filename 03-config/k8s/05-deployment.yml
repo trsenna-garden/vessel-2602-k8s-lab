@@ -17,3 +17,35 @@ spec:
           image: nginx:alpine
           ports:
             - containerPort: 80
+
+          # Init Delay
+          command: ["/bin/sh", "-c"]
+          args: 
+            - |
+              sleep 20 
+              touch /tmp/startup_ok /tmp/ready_ok /tmp/alive_ok
+              exec nginx -g 'daemon off;'
+
+          # STARTUP PROBE
+          startupProbe:
+            exec:
+              command: ["cat", "/tmp/startup_ok"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 10
+
+          # READINESS PROBE
+          readinessProbe:
+            exec:
+              command: ["cat", "/tmp/ready_ok"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 2
+
+          # LIVENESS PROBE
+          livenessProbe:
+            exec:
+              command: ["cat", "/tmp/alive_ok"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3

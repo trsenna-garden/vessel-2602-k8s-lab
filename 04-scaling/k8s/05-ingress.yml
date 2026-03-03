@@ -10,10 +10,10 @@ spec:
   - host: vessel-k8s-lab.local
     http:
       paths:
-      - path: /03-health
+      - path: /04-scaling
         pathType: Prefix
         backend:
           service:
-            name: app-nginx-service
+            name: app-scaling-service
             port:
               number: 80

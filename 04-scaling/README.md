@@ -1,89 +1,54 @@
-# Lab 03 - Explorando Health Probes no Kubernetes
+# Lab 04 - Explorando Resources e HPA no Kubernetes
 
-Este laboratório demonstra o funcionamento prático das **Startup**, **Readiness** e **Liveness** Probes utilizando um servidor Nginx. O cenário foi configurado para simular uma aplicação que demora a iniciar e permite a manipulação manual do seu estado de saúde.
+Este laboratório foca na validação prática de escalonamento automático de pods (**Horizontal Pod Autoscaler - HPA**) baseado em consumo de recursos (**CPU Resources**).
 
-## O Cenário do Laboratório
+## 🚀 Objetivo
+Validar como o Kubernetes gerencia a elasticidade de uma aplicação com base em métricas de CPU, garantindo que o HPA reaja rapidamente a picos de carga e mantenha a estabilidade do cluster durante o resfriamento.
 
-O container Nginx foi configurado para:
-1.  Aguardar **20 segundos** (`sleep 20`) antes de iniciar o processo do Nginx.
-2.  Criar três arquivos de "check" no diretório `/tmp`: `startup_ok`, `ready_ok` e `alive_ok`.
-3.  As Probes do Kubernetes monitoram a existência desses arquivos via comando `cat`.
+## 🛠️ Pré-requisitos
+Para a execução deste lab, assume-se que a infraestrutura base já foi provisionada (via projeto `00-cluster`):
+- Cluster Kubernetes ativo.
+- **Metrics-server** habilitado e funcional.
+- Namespace `lab-scaling` já criado.
 
-## Como Iniciar
+## 🏗️ Estrutura do Lab
 
-1.  **Prepare o ambiente e suba os recursos:**
-    ```bash
-    make up
-    ```
-2.  **Acompanhe o estado do Pod em tempo real:**
-    ```bash
-    watch kubectl get pods
-    ```
-    *(Você notará que o Pod levará cerca de 25-30 segundos para ficar `1/1 Ready` devido ao delay inicial).*
+1.  **Deployment (`app-scaling`)**: Utiliza a imagem `registry.k8s.io/hpa-example` que executa cálculos intensivos de CPU ao receber requisições HTTP.
+2.  **Resources**: O pod está configurado com `requests: 50m` de CPU. O HPA usará este valor como base para calcular a porcentagem de uso.
+3.  **HPA (`app-hpa`)**: Configurado para manter a utilização média de CPU em **50%**, escalando de **1 a 5 réplicas**.
+4.  **Service & Ingress**: A aplicação é exposta internamente no cluster e externamente via Ingress no path `/04-scaling`.
 
----
+## 🧪 Guia de Validação
 
-## Roteiro de Testes
+### 1. Aplicar Manifestos
+Implante os recursos da aplicação no namespace pré-existente:
+```bash
+make up
+```
 
-### 1. Validando a Startup Probe
-A **Startup Probe** bloqueia as outras probes até que ela passe.
-- **Observação:** Durante os primeiros 20 segundos, o container estará no estado `Running`, mas o status do Pod não mudará para `Ready` porque o arquivo `/tmp/startup_ok` ainda não existe.
-- **O que testar:** Tente rodar `make status` repetidamente logo após o `make up`.
-- **Análise de Eventos:** Execute o comando abaixo para ver o K8s reclamando da falha inicial (que é esperada):
-  ```bash
-  kubectl get events --sort-by='.lastTimestamp'
-  ```
-- **Dica de Diagnóstico:** Se o container reiniciar repetidamente, o `kubectl describe pod` detalhará a falha:
-  ```bash
-  kubectl describe pod <nome-do-pod>
-  ```
-  Procure na seção `Events` por: `Startup probe failed: cat: /tmp/startup_ok: No such file or directory`.
+### 2. Monitorar o Escalonamento (Terminal 1)
+Em um terminal separado, acompanhe o estado do HPA em tempo real:
+```bash
+make hpa-status
+```
+*Nota: Pode levar até 1 minuto para o `TARGETS` sair de `<unknown>` para `0%/50%`.*
 
-- **Cenário de Falha:** Se você editasse o arquivo `k8s/05-deployment.yml` e reduzisse o `failureThreshold` da Startup Probe para `2`, o Kubernetes mataria o container antes dos 20 segundos de `sleep` terminarem, entrando em um loop de reinicialização.
+### 3. Gerar Carga de Teste (Terminal 2)
+Inicie o bombardeamento de requisições ao serviço para forçar o consumo de CPU:
+```bash
+make load-test
+```
 
-### 2. Validando a Readiness Probe
-A **Readiness Probe** determina se o Pod pode receber tráfego do Service/Ingress.
-- **Teste:** Remova o arquivo de prontidão:
-  ```bash
-  make shell
-  # Dentro do container:
-  rm /tmp/ready_ok
-  exit
-  ```
-- **Resultado:** Execute `make status`. O Pod aparecerá como `0/1 Ready`. O container **não** é reiniciado, mas o Ingress parará de enviar requisições para este Pod.
-- **Dica:** Verifique os eventos com `kubectl get events` para ver a mensagem `Readiness probe failed`.
-- **Restauração:** Entre no shell novamente e execute `touch /tmp/ready_ok` para ver o Pod voltar a ficar pronto.
+### 4. Observar o Scale-up
+No **Terminal 1**, você verá o uso de CPU disparar (ex: `250%/50%`). O Kubernetes criará novos pods (`REPLICAS` subindo de 1 para 5) conforme a carga aumenta.
 
-### 3. Validando a Liveness Probe
-A **Liveness Probe** determina se o container deve ser reiniciado.
-- **Teste:** Remova o arquivo de vitalidade:
-  ```bash
-  make shell
-  # Dentro do container:
-  rm /tmp/alive_ok
-  exit
-  ```
-- **Resultado:** Após alguns segundos (baseado no `failureThreshold`), o Kubernetes detectará a falha e **reiniciará o container**.
-- **Dica:** Verifique os eventos com `kubectl get events` para ver a mensagem `Liveness probe failed`. Você verá uma indicação de que o container "unhealthy" será matado e reiniciado.
-- **Observação:** O comando `kubectl get pods` mostrará o contador na coluna `RESTARTS` subindo para 1.
+### 5. Observar o Scale-down
+Interrompa o `make load-test` (Ctrl+C no terminal de carga).
+*   **O que esperar:** A carga cairá para `0%/50%`.
+*   **O Tempo de Segurança:** O Kubernetes aguardará o tempo padrão de segurança (*stabilization window*) antes de remover os pods extras para evitar instabilidade.
 
-### 4. Simulando um Crash Real
-Diferente das probes (onde o processo continua rodando mas o arquivo some), aqui simulamos a morte do processo principal.
-- **Teste:** Derrube o processo do Nginx:
-  ```bash
-  make shell
-  # Dentro do container:
-  pkill nginx
-  exit
-  ```
-- **Resultado:** O Kubernetes detectará imediatamente que o processo `PID 1` morreu e reiniciará o container, independente de qualquer Health Probe. Observe o aumento em `RESTARTS`.
-
----
-
-## Comandos Úteis (Makefile)
-
-- `make up`: Aplica os manifestos e configura o contexto.
-- `make status`: Mostra o estado atual dos recursos.
-- `make logs`: Acompanha a saída do Nginx.
-- `make shell`: Acessa o container para manipular os arquivos de teste.
-- `make down`: Limpa todos os recursos do laboratório.
+## 🧹 Limpeza
+Para remover os recursos deste laboratório (sem afetar a infraestrutura base):
+```bash
+make down
+```

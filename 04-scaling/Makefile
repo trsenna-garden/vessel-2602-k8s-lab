@@ -1,11 +1,11 @@
 # Configurações
-NAMESPACE   := lab-health
+NAMESPACE   := lab-scaling
 PROFILE     := minikube-k8s-lab
 APP_LABEL   := app=web-server
-DEPLOY_NAME := app-nginx
+DEPLOY_NAME := app-scaling
 KUBECTL     := kubectl -n $(NAMESPACE)
 
-.PHONY: help up down apply ctx status logs shell describe port-forward wait restart diff
+.PHONY: help up down apply ctx status logs shell describe port-forward wait restart diff load-test hpa-status
 
 ## help: Exibe esta mensagem de ajuda
 help:
@@ -21,11 +21,13 @@ help:
 	@echo "  logs           Logs em tempo real do deployment"
 	@echo "  describe       Detalhes técnicos dos pods"
 	@echo "  diff           Diferença entre local e cluster"
+	@echo "  hpa-status     Monitora o escalonamento em tempo real"
 	@echo ""
 	@echo "Comandos de Interação:"
 	@echo "  shell          Acessa o terminal do container"
 	@echo "  port-forward   Acesso local via localhost:8080"
-	@echo "  restart        Reinicia o deployment (testa persistência)"
+	@echo "  restart        Reinicia o deployment"
+	@echo "  load-test      Gera carga para testar o HPA"
 	@echo ""
 	@echo "Configuração (Utilitários):"
 	@echo "  ctx            Define o perfil do minikube e o contexto para o namespace do lab"
@@ -48,16 +50,16 @@ ctx:
 	@echo "Configurando namespace: $(NAMESPACE)"
 	kubectl config set-context --current --namespace=$(NAMESPACE)
 
-## status: Exibe o estado de todos os recursos (Pods, Services, Ingress)
+## status: Exibe o estado de todos os recursos (Pods, Services, Ingress, HPA)
 status:
 	@echo "--- Recursos no Namespace: $(NAMESPACE) ---"
-	$(KUBECTL) get all,ingress
+	$(KUBECTL) get all,ingress,hpa
 
 ## logs: Acompanha os logs do Deployment
 logs:
 	$(KUBECTL) logs -f deploy/$(DEPLOY_NAME)
 
-## shell: Abre um terminal interativo dentro do container do Nginx
+## shell: Abre um terminal interativo dentro do container
 shell:
 	$(KUBECTL) exec -it deploy/$(DEPLOY_NAME) -- sh
 
@@ -73,10 +75,19 @@ port-forward:
 wait:
 	$(KUBECTL) wait --for=condition=ready pod -l $(APP_LABEL) --timeout=60s
 
-## restart: Reinicia o Deployment (útil para testar initContainers e persistência)
+## restart: Reinicia o Deployment
 restart:
 	$(KUBECTL) rollout restart deployment/$(DEPLOY_NAME)
 
 ## diff: Mostra a diferença entre os manifestos locais e o cluster
 diff:
 	$(KUBECTL) diff -f k8s/
+
+## load-test: Dispara carga infinita contra o serviço para forçar o HPA (use Ctrl+C para parar)
+load-test:
+	@echo "Iniciando teste de carga... (Pressione Ctrl+C para parar)"
+	$(KUBECTL) run -i --tty load-generator --rm --image=busybox:1.28 --restart=Never -- /bin/sh -c "while sleep 0.01; do wget -q -O- http://app-scaling-service; done"
+
+## hpa-status: Monitora o estado do HPA e o número de réplicas em tempo real
+hpa-status:
+	$(KUBECTL) get hpa app-hpa -w
